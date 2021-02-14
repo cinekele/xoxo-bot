@@ -1,3 +1,5 @@
+import asyncio
+from multiprocessing import Queue
 import discord
 import os
 import praw
@@ -17,12 +19,14 @@ class Funny(commands.Cog):
         user_agent = os.getenv('user_agent')
         self.reddit = praw.Reddit(client_id=client_id,
                                   client_secret=client_secret,
-                                  user_agent=user_agent)
+                                  user_agent=user_agent,
+                                  check_for_async=False)
         self.top_memes = None
         self.top_boobs = None
         self.players = {}
         self.engine = pyttsx3.init()
         self.engine.setProperty('rate', 150)
+
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -33,32 +37,26 @@ class Funny(commands.Cog):
     async def hello_there(self, ctx):
         await ctx.send(f"General Kenobi!", tts=True)
 
-    @commands.command()
-    async def ziobro(self, ctx):
-        """ Funkcja mówiaca słynne słowa Stonogi """
-        await self.play(ctx, "Ziobro.mp3")
-
-    @commands.command()
-    async def student(self, ctx):
-        await self.play(ctx, "student.mp4")
-
-    async def play(self, ctx: discord.ext.commands.Context, source):
-        channel = ctx.author.voice.channel
-        if channel is None:
-            await ctx.send("Musisz być na kanale głosowym")
+    async def play(self, channel: discord.VoiceChannel, source):
+        voice_client, queue = await self.connect_voice_client_to_channel(channel)
+        if voice_client.is_playing():
+            queue.put(source)
         else:
-            voice_client = await self.connect_voice_client_to_channel(channel)
             sound = discord.FFmpegPCMAudio(source=source,
-                                           executable=r"C:\Users\PC-Komputer\Documents\ffmpeg\bin\ffmpeg.exe")
-            await voice_client.play(sound)
+                                           executable=r"ffmpeg.exe")
+            voice_client.play(sound, after=lambda x: None if queue.empty() else self.play_next(channel, queue.get()))
+
+    def play_next(self, channel, source):
+        asyncio.run_coroutine_threadsafe(self.play(channel, source), self.client.loop)
 
     async def connect_voice_client_to_channel(self, channel: discord.VoiceChannel):
         if channel.guild.id in self.players:
-            voice_client = self.players[channel.guild.id]
+            voice_client, queue = self.players[channel.guild.id]
         else:
-            voice_client = await channel.connect()
-            self.players[channel.guild.id] = voice_client
-        return voice_client
+            voice_client = await channel.connect(timeout=2.0, reconnect=True)
+            queue = Queue()
+            self.players[channel.guild.id] = (voice_client, queue)
+        return voice_client, queue
 
     @commands.command()
     async def boobs(self, ctx):
@@ -70,9 +68,9 @@ class Funny(commands.Cog):
 
     @commands.command()
     async def tts(self, ctx, *, arg):
-        self.engine.save_to_file(arg, 'test.mp4')
+        self.engine.save_to_file(arg, r'music/test.mp4')
         self.engine.runAndWait()
-        await self.play(ctx, 'test.mp4')
+        await self.play(ctx, r'music/test.mp4')
 
     @commands.command()
     async def disconnect(self, ctx):
@@ -107,28 +105,19 @@ class Funny(commands.Cog):
                         voice_channel_with_max_members = voice_channel
 
                 if max_members > 0:
-                    voice_client = await self.connect_voice_client_to_channel(voice_channel_with_max_members)
-                    sound = discord.FFmpegPCMAudio(source="Barka - Krzysztof Krawczyk.mp3",
-                                                   executable=r"C:\Users\PC-Komputer\Documents\ffmpeg\bin\ffmpeg.exe")
-                    await voice_client.play(sound)
+                    await self.play(voice_channel_with_max_members, r"music/Barka.mp3")
+
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        if before.channel is None:
+        if before.channel is None and member != self.client.user:
             if member.id == 300370298287685632:
-                sound = discord.FFmpegPCMAudio(source='karakan.mp3',
-                                               executable=r"C:\Users\PC-Komputer\Documents\ffmpeg\bin\ffmpeg.exe")
+                await self.play(after.channel, r"music/karakan.mp3")
             else:
                 nazwa = member.nick if member.nick is not None else member.name
-                self.engine.save_to_file(f"{nazwa} dołączył do kanału", 'test.mp4')
+                self.engine.save_to_file(f"Na kanał wbija jak na bombsajt A: {nazwa}", r'music/test.mp4')
                 self.engine.runAndWait()
-                sound = discord.FFmpegPCMAudio(source='test.mp4',
-                                           executable=r"C:\Users\PC-Komputer\Documents\ffmpeg\bin\ffmpeg.exe")
-            voice_client = await self.connect_voice_client_to_channel(after.channel)
-            try:
-                await voice_client.play(sound)
-            except:
-                pass
+                await self.play(after.channel, r"music/test.mp4")
 
     @commands.command()
     async def start(self, ctx):
@@ -150,7 +139,48 @@ class Funny(commands.Cog):
                 await user.edit(mute=True)
 
     @commands.command()
-    async def gadaj(self, ctx):
+    async def ziobro(self, ctx):
+        """ Funkcja mówiaca słynne słowa Stonogi """
+        await self.play(ctx.channel, r"music/ziobro.mp3")
+
+    @commands.command()
+    async def student(self, ctx):
+        await self.play(ctx.channel, r"music/student.mp4")
+
+    @commands.command()
+    async def jeszcze(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/jeszcze.mp3')
+
+    @commands.command()
+    async def sesja(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/sesja.mp3')
+
+    @commands.command()
+    async def zaliczenie(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/zaliczenie.mp3')
+
+    @commands.command()
+    async def kutas(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/kutas.mp3')
+
+    @commands.command()
+    async def niewiem(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/niewiem.mp3')
+
+    @commands.command()
+    async def brama(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/wypierdalaj.mp3')
+
+    @commands.command()
+    async def grzecznie(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/grzecznie.mp3')
+
+    @commands.command()
+    async def ulica(self, ctx):
+        await self.play(ctx.author.voice.channel, 'music/z_ulicy.mp3')
+
+    @commands.command(aliases=["gadaj"])
+    async def unmute(self, ctx):
         if ctx.author.voice.channel is not None:
             users = ctx.author.voice.channel.members
             for user in users:

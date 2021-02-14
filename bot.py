@@ -8,12 +8,13 @@ from discord.ext import commands, tasks
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-client = commands.Bot(command_prefix='.')
+client = commands.Bot(command_prefix='.', intents=discord.Intents().all())
 
 activities = cycle([discord.Activity(type=discord.ActivityType.watching, name='porno'),
                     discord.Activity(type=discord.ActivityType.listening, name="Janusza Korwina Mikke"),
                     discord.Activity(type=discord.ActivityType.watching, name="dzbanienie Freja"),
-                    discord.Activity(type=discord.ActivityType.playing, name="walenie gruchy")])
+                    discord.Activity(type=discord.ActivityType.playing, name="walenie gruchy"),
+                    discord.CustomActivity('Daje hedziki w CS:GO')])
 
 
 @client.event

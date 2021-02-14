@@ -19,11 +19,11 @@ class Games(commands.Cog):
                        f"Odpowiedź: {random.choice(responses)}")
 
     @commands.command(aliases=["rozmiar"])
-    async def size_of_dick(self, ctx):
+    async def punkty(self, ctx):
         s = ""
-        members =  await ctx.guild.fetch_members(limit=150).flatten()
+        members = await ctx.guild.fetch_members(limit=150).flatten()
         for member in members:
-            s += f"{member.name} ma {random.randint(5, 40)} cm kutasa\n"
+            s += f"{member.name} ma {random.randint(5, 40)} pkt z RP\n"
         await ctx.send(s)
 
 
