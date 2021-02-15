@@ -75,7 +75,7 @@ class Funny(commands.Cog):
     @commands.command()
     async def disconnect(self, ctx):
         if ctx.guild.id in self.players:
-            voice_client = self.players.pop(ctx.guild.id)
+            voice_client = self.players.pop(ctx.guild.id)[0]
             await voice_client.disconnect()
         else:
             await ctx.send("Musisz być na kanale z botem głosowym")
@@ -120,7 +120,15 @@ class Funny(commands.Cog):
                 await self.play(after.channel, r"music/test.mp4")
         if member == self.client.user:
             if after.channel is None:
-                self.players.pop(before.channel.guild.id)
+                server_id = before.channel.guild.id
+                if server_id in self.players:
+                    self.players.pop(server_id)
+
+    @commands.command(aliases=["next"])
+    async def skip(self, ctx):
+        voice_client = self.players[ctx.guild.id][0]
+        if voice_client.is_playing():
+            voice_client.stop()
 
     @commands.command()
     async def start(self, ctx):
@@ -135,60 +143,70 @@ class Funny(commands.Cog):
         self.memes.stop()
 
     @commands.command()
-    async def mute(self, ctx):
-        if ctx.author.voice.channel is not None:
-            users = ctx.author.voice.channel.members
-            for user in users:
-                await user.edit(mute=True)
-
-    @commands.command()
     async def ziobro(self, ctx):
-        """ Funkcja mówiaca słynne słowa Stonogi """
+        """Funkcja mówiaca słynne słowa Stonogi"""
         await self.play(ctx.channel, r"music/ziobro.mp3")
 
     @commands.command()
     async def student(self, ctx):
+        """Smutna historia pewnego studenta"""
         await self.play(ctx.channel, r"music/student.mp4")
 
     @commands.command()
     async def jeszcze(self, ctx):
+        """Jeszcze jak"""
         await self.play(ctx.author.voice.channel, 'music/jeszcze.mp3')
 
     @commands.command()
     async def sesja(self, ctx):
+        """Opowieść o trudnych czasach"""
         await self.play(ctx.author.voice.channel, 'music/sesja.mp3')
 
     @commands.command()
     async def zaliczenie(self, ctx):
+        """Piosenka o trudnym studenckim życiu"""
         await self.play(ctx.author.voice.channel, 'music/zaliczenie.mp3')
 
     @commands.command()
     async def kutas(self, ctx):
+        """Brakuje ci dużego ..."""
         await self.play(ctx.author.voice.channel, 'music/kutas.mp3')
 
     @commands.command()
     async def niewiem(self, ctx):
+        """No nie wiem byczku"""
         await self.play(ctx.author.voice.channel, 'music/niewiem.mp3')
 
     @commands.command()
     async def brama(self, ctx):
+        """Kolejny cytat wybitnego polaka"""
         await self.play(ctx.author.voice.channel, 'music/wypierdalaj.mp3')
 
     @commands.command()
     async def grzecznie(self, ctx):
+        """Jeszcze się zastanawiasz??"""
         await self.play(ctx.author.voice.channel, 'music/grzecznie.mp3')
 
     @commands.command()
     async def ulica(self, ctx):
+        """Uliczny chłopak"""
         await self.play(ctx.author.voice.channel, 'music/z_ulicy.mp3')
 
     @commands.command(aliases=["gadaj"])
     async def unmute(self, ctx):
+        """Odcisz kanał"""
         if ctx.author.voice.channel is not None:
             users = ctx.author.voice.channel.members
             for user in users:
                 await user.edit(mute=False)
 
+    @commands.command()
+    async def mute(self, ctx):
+        """Wycisz kanał"""
+        if ctx.author.voice.channel is not None:
+            users = ctx.author.voice.channel.members
+            for user in users:
+                await user.edit(mute=True)
 
 def setup(client):
     client.add_cog(Funny(client))
