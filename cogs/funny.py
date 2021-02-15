@@ -118,6 +118,9 @@ class Funny(commands.Cog):
                 self.engine.save_to_file(f"Na kanał wbija jak na bombsajt A: {nazwa}", r'music/test.mp4')
                 self.engine.runAndWait()
                 await self.play(after.channel, r"music/test.mp4")
+        if member == self.client.user:
+            if after.channel is None:
+                self.players.pop(before.channel.guild.id)
 
     @commands.command()
     async def start(self, ctx):
