@@ -1,10 +1,7 @@
 import asyncio
 from multiprocessing import Queue
 import discord
-import os
-import praw
 import time
-import random
 import pyttsx3
 from discord.ext import commands, tasks
 
@@ -14,19 +11,9 @@ class Funny(commands.Cog):
 
     def __init__(self, client):
         self.client = client
-        client_id = os.getenv('client_id')
-        client_secret = os.getenv('client_secret')
-        user_agent = os.getenv('user_agent')
-        self.reddit = praw.Reddit(client_id=client_id,
-                                  client_secret=client_secret,
-                                  user_agent=user_agent,
-                                  check_for_async=False)
-        self.top_memes = None
-        self.top_boobs = None
         self.players = {}
         self.engine = pyttsx3.init()
         self.engine.setProperty('rate', 150)
-
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -59,14 +46,6 @@ class Funny(commands.Cog):
         return voice_client, queue
 
     @commands.command()
-    async def boobs(self, ctx):
-        if not self.top_boobs:
-            self.top_boobs = list(self.reddit.subreddit("Boobies").hot(limit=40))
-        which_boobs = random.randint(0, len(self.top_boobs) - 1)
-        await ctx.send(self.top_boobs[which_boobs].url)
-        self.top_boobs.pop(which_boobs)
-
-    @commands.command()
     async def tts(self, ctx, *, arg):
         self.engine.save_to_file(arg, r'music/test.mp4')
         self.engine.runAndWait()
@@ -79,13 +58,6 @@ class Funny(commands.Cog):
             await voice_client.disconnect()
         else:
             await ctx.send("Musisz być na kanale z botem głosowym")
-
-    @tasks.loop(minutes=1)
-    async def memes(self, channel: discord.TextChannel):
-        if not self.top_memes:
-            self.top_memes = list(self.reddit.subreddit('memes').hot(limit=40))
-        await channel.send(self.top_memes[-1].url)
-        self.top_memes.pop()
 
     @tasks.loop(minutes=1)
     async def papiezowa_godzina(self):
@@ -107,7 +79,6 @@ class Funny(commands.Cog):
                 if max_members > 0:
                     await self.play(voice_channel_with_max_members, r"music/Barka.mp3")
 
-
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         if before.channel is None and member != self.client.user:
@@ -126,21 +97,10 @@ class Funny(commands.Cog):
 
     @commands.command(aliases=["next"])
     async def skip(self, ctx):
+        """Pomiń audio"""
         voice_client = self.players[ctx.guild.id][0]
         if voice_client.is_playing():
             voice_client.stop()
-
-    @commands.command()
-    async def start(self, ctx):
-        await ctx.send("Pętla z memami się rozpoczęła")
-        if not self.top_memes:
-            self.top_memes = list(self.reddit.subreddit('memes').hot(limit=40))
-        self.memes.start(ctx.channel)
-
-    @commands.command()
-    async def stop(self, ctx):
-        await ctx.send("Pętla z memami się skończyła")
-        self.memes.stop()
 
     @commands.command()
     async def ziobro(self, ctx):
@@ -207,6 +167,7 @@ class Funny(commands.Cog):
             users = ctx.author.voice.channel.members
             for user in users:
                 await user.edit(mute=True)
+
 
 def setup(client):
     client.add_cog(Funny(client))
