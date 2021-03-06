@@ -25,25 +25,46 @@ class Funny(commands.Cog):
         await ctx.send(f"General Kenobi!", tts=True)
 
     async def play(self, channel: discord.VoiceChannel, source):
-        voice_client, queue = await self.connect_voice_client_to_channel(channel)
+        voice_client, queue, loop = await self.connect_voice_client_to_channel(channel)
         if voice_client.is_playing():
             queue.put(source)
         else:
             sound = discord.FFmpegPCMAudio(source=source,
                                            executable=r"ffmpeg.exe")
-            voice_client.play(sound, after=lambda x: None if queue.empty() else self.play_next(channel, queue.get()))
+
+            def after(error):
+                if loop:
+                    queue.put(source)
+                return None if queue.empty() else self.play_next(channel, queue.get())
+
+            voice_client.play(sound, after=lambda x: after(x))
 
     def play_next(self, channel, source):
         asyncio.run_coroutine_threadsafe(self.play(channel, source), self.client.loop)
 
     async def connect_voice_client_to_channel(self, channel: discord.VoiceChannel):
         if channel.guild.id in self.players:
-            voice_client, queue = self.players[channel.guild.id]
+            voice_client, queue, loop = self.players[channel.guild.id]
         else:
             voice_client = await channel.connect(timeout=2.0, reconnect=True)
             queue = Queue()
-            self.players[channel.guild.id] = (voice_client, queue)
-        return voice_client, queue
+            loop = False
+            self.players[channel.guild.id] = (voice_client, queue, loop)
+        return voice_client, queue, loop
+
+    @commands.command()
+    async def loop(self, ctx):
+        if ctx.guild.id in self.players:
+            voice_client, queue, loop = self.players.get(ctx.guild.id)
+        loop = True
+        self.players.update({ctx.guild.id: (voice_client, queue, loop)})
+
+    @commands.command()
+    async def unloop(self, ctx):
+        if ctx.guild.id in self.players:
+            voice_client, queue, loop = self.players.get(ctx.guild.id)
+        loop = False
+        self.players.update({ctx.guild.id: (voice_client, queue, loop)})
 
     @commands.command()
     async def tts(self, ctx, *, arg):
@@ -94,6 +115,10 @@ class Funny(commands.Cog):
                 server_id = before.channel.guild.id
                 if server_id in self.players:
                     self.players.pop(server_id)
+            if after.afk:
+                voice_client = self.players.get(before.channel.guild.id)[0]
+                await voice_client.disconnect()
+
 
     @commands.command(aliases=["next"])
     async def skip(self, ctx):
@@ -105,12 +130,12 @@ class Funny(commands.Cog):
     @commands.command()
     async def ziobro(self, ctx):
         """Funkcja mówiaca słynne słowa Stonogi"""
-        await self.play(ctx.channel, r"music/ziobro.mp3")
+        await self.play(ctx.author.voice.channel, r"music/ziobro.mp3")
 
     @commands.command()
     async def student(self, ctx):
         """Smutna historia pewnego studenta"""
-        await self.play(ctx.channel, r"music/student.mp4")
+        await self.play(ctx.author.voice.channel, r"music/student.mp4")
 
     @commands.command()
     async def jeszcze(self, ctx):

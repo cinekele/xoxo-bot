@@ -86,7 +86,7 @@ async def clear_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("Proszę sprecyzować dodatnią liczbę wiadomości do usunięcia.")
 
-for filename in os.listdir(r"C:\Users\PC-Komputer\PycharmProjects\my_bot\cogs"):
+for filename in os.listdir(r"cogs"):
     if filename.endswith(".py"):
         client.load_extension(f"cogs.{filename[:-3]}")
 

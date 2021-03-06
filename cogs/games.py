@@ -68,6 +68,5 @@ class Games(commands.Cog):
         self.top_boobs.pop(which_boobs)
 
 
-
 def setup(client):
     client.add_cog(Games(client))
